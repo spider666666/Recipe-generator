@@ -46,9 +46,12 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
     @Transactional
     public Recipe generateRecipeWithClaude(GenerateRecipeRequest request) {
         try {
-            String prompt = buildPrompt(request);
-            String claudeResponse = callClaudeAPI(prompt);
-            return parseClaudeResponse(claudeResponse, request);
+//            String prompt = buildPrompt(request);
+//            String claudeResponse = callClaudeAPI(prompt);
+//            return parseClaudeResponse(claudeResponse, request);
+            Recipe recipe = new Recipe();
+            recipe.setName("西红柿炒鸡蛋");
+            return recipe;
         } catch (Exception e) {
             log.error("调用Claude API失败", e);
             throw new RuntimeException("生成食谱失败: " + e.getMessage());
