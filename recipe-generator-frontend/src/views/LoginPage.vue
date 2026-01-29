@@ -122,8 +122,11 @@ const handleLogin = async () => {
       const response = await loginAPI(loginForm)
 
       // 保存 token 和用户信息
-      localStorage.setItem('token', response.token)
-      localStorage.setItem('userInfo', JSON.stringify(response.userInfo))
+      // 后端返回格式: { code, message, data: { accessToken, username } }
+      localStorage.setItem('token', response.data.accessToken)
+      localStorage.setItem('userInfo', JSON.stringify({
+        username: response.data.username
+      }))
 
       ElMessage.success('登录成功！')
 

@@ -49,7 +49,7 @@ export const registerAPI = async (data) => {
 }
 
 export const getUserInfoAPI = async () => {
-  return await api.get('/user/info')
+  return await api.get('/user/current')
 }
 
 // 生成食谱

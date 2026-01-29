@@ -61,6 +61,32 @@
           </el-row>
         </el-card>
 
+        <!-- 常用组合 -->
+        <el-card v-if="savedCombos.length > 0" class="combos-card">
+          <template #header>
+            <div class="card-header">
+              <span>💾 常用组合</span>
+              <span class="combo-count">{{ savedCombos.length }} 个</span>
+            </div>
+          </template>
+          <div class="combos-list">
+            <el-tag
+              v-for="combo in savedCombos"
+              :key="combo.createdAt"
+              class="combo-tag"
+              size="large"
+              type="success"
+              effect="plain"
+              closable
+              @click="loadCombo(combo)"
+              @close="deleteCombo(combo)"
+            >
+              <el-icon><Collection /></el-icon>
+              {{ combo.name }} ({{ combo.ingredients.length }}种)
+            </el-tag>
+          </div>
+        </el-card>
+
         <!-- 已选食材 -->
         <el-card class="selected-card">
           <template #header>
@@ -153,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Collection, MagicStick } from '@element-plus/icons-vue'
 import IngredientGrid from '../components/IngredientGrid.vue'
@@ -166,13 +192,23 @@ const customIngredient = ref('')
 const customAmount = ref('')
 const selectedIngredients = ref([])
 const loading = ref(false)
+const savedCombos = ref([])
 
 const filters = ref({
-  cuisine: '',
+  cuisine: 'chinese',  // 默认中餐
   tastes: [],
-  time: '',
-  difficulty: ''
+  time: '30',  // 默认30分钟
+  difficulty: 'medium'  // 默认家常
 })
+
+// 加载保存的组合
+onMounted(() => {
+  loadSavedCombos()
+})
+
+const loadSavedCombos = () => {
+  savedCombos.value = JSON.parse(localStorage.getItem('ingredient-combos') || '[]')
+}
 
 // 食材数据按分类
 const ingredientsByCategory = ingredientsData
@@ -249,7 +285,33 @@ const saveCombo = async () => {
       createdAt: new Date().toISOString()
     })
     localStorage.setItem('ingredient-combos', JSON.stringify(combos))
+    loadSavedCombos()  // 重新加载组合列表
     ElMessage.success('保存成功')
+  }
+}
+
+// 加载组合
+const loadCombo = (combo) => {
+  selectedIngredients.value = [...combo.ingredients]
+  ElMessage.success(`已加载组合：${combo.name}`)
+}
+
+// 删除组合
+const deleteCombo = async (combo) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除组合"${combo.name}"吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const combos = JSON.parse(localStorage.getItem('ingredient-combos') || '[]')
+    const filtered = combos.filter(c => c.createdAt !== combo.createdAt)
+    localStorage.setItem('ingredient-combos', JSON.stringify(filtered))
+    loadSavedCombos()  // 重新加载组合列表
+    ElMessage.success('已删除')
+  } catch {
+    // 用户取消
   }
 }
 
@@ -267,17 +329,73 @@ const generateRecipes = async () => {
 
   loading.value = true
   try {
-    const params = {
-      ingredients: selectedIngredients.value,
-      filters: {
-        cuisine: filters.value.cuisine || undefined,
-        tastes: filters.value.tastes.length > 0 ? filters.value.tastes : undefined,
-        time: filters.value.time || undefined,
-        difficulty: filters.value.difficulty || undefined
-      }
+    // 映射前端值到后端枚举
+    const cuisineMap = {
+      'chinese': 'CHINESE',
+      'western': 'WESTERN',
+      'japanese': 'JAPANESE_KOREAN',
+      'southeast': 'SOUTHEAST_ASIAN'
     }
 
-    const recipes = await generateRecipesAPI(params)
+    const flavorMap = {
+      'spicy': 'SPICY',
+      'sweet': 'SWEET',
+      'salty': 'SALTY',
+      'sour': 'SOUR',
+      'light': 'MILD'
+    }
+
+    const difficultyMap = {
+      'easy': 'BEGINNER',
+      'medium': 'HOME_COOKING',
+      'hard': 'CHEF'
+    }
+
+    // 构建符合后端要求的请求参数
+    const params = {
+      ingredients: selectedIngredients.value.map(ing => ({
+        name: ing.name,
+        quantity: ing.amount || '适量'  // 后端字段名是 quantity
+      })),
+      cuisineType: cuisineMap[filters.value.cuisine] || 'CHINESE',  // 默认中餐
+      flavorTypes: filters.value.tastes.map(taste => flavorMap[taste]).filter(Boolean),
+      cookingTime: parseInt(filters.value.time) || 30,  // 默认30分钟
+      difficultyLevel: difficultyMap[filters.value.difficulty] || 'HOME_COOKING'  // 默认家常
+    }
+
+    const response = await generateRecipesAPI(params)
+
+    // 后端返回格式: { code, message, data: Recipe }
+    // 提取实际的菜谱数据并转换为前端格式
+    const recipe = response.data
+
+    // 获取用户选择的食材名称列表
+    const userIngredientNames = selectedIngredients.value.map(ing => ing.name)
+
+    // 转换后端字段名到前端格式
+    const formattedRecipe = {
+      id: recipe.id || Date.now(),
+      name: recipe.name,
+      cuisine: recipe.cuisineType,  // 后端: cuisineType
+      time: recipe.cookingTime,     // 后端: cookingTime
+      difficulty: recipe.difficultyLevel,  // 后端: difficultyLevel
+      description: recipe.description,
+      servings: recipe.servings,
+      ingredients: recipe.ingredients?.map(ing => ({
+        name: ing.name,
+        amount: ing.quantity,  // 后端: quantity
+        // 如果后端提供了 hasIngredient 字段则使用，否则根据用户选择判断
+        available: ing.hasIngredient !== undefined
+          ? ing.hasIngredient
+          : userIngredientNames.includes(ing.name)
+      })) || [],
+      steps: recipe.steps || [],
+      missingIngredients: recipe.missingIngredients || [],
+      matchScore: recipe.matchScore
+    }
+
+    // 将单个菜谱包装成数组
+    const recipesArray = [formattedRecipe]
 
     // 保存到历史记录
     const history = JSON.parse(localStorage.getItem('recipe-history') || '[]')
@@ -285,7 +403,7 @@ const generateRecipes = async () => {
       id: Date.now(),
       ingredients: [...selectedIngredients.value],
       filters: { ...filters.value },
-      recipes: recipes,
+      recipes: recipesArray,
       createdAt: new Date().toISOString()
     })
     // 只保留最近50条
@@ -293,7 +411,7 @@ const generateRecipes = async () => {
     localStorage.setItem('recipe-history', JSON.stringify(history))
 
     // 保存到全局状态（用于菜谱页面展示）
-    localStorage.setItem('current-recipes', JSON.stringify(recipes))
+    localStorage.setItem('current-recipes', JSON.stringify(recipesArray))
 
     ElMessage.success('食谱生成成功！')
 
@@ -345,6 +463,7 @@ const generateRecipes = async () => {
 }
 
 .custom-input-card,
+.combos-card,
 .selected-card,
 .filters-card {
   margin-bottom: 20px;
@@ -354,6 +473,32 @@ const generateRecipes = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.combo-count {
+  font-size: 14px;
+  color: #909399;
+}
+
+.combos-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.combo-tag {
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 8px 16px;
+}
+
+.combo-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+}
+
+.combo-tag .el-icon {
+  margin-right: 6px;
 }
 
 .empty-hint {

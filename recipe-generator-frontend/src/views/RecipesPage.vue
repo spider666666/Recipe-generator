@@ -251,8 +251,24 @@ const saveComment = () => {
 const addToShopping = (recipe) => {
   const shoppingList = JSON.parse(localStorage.getItem('shopping-list') || '[]')
 
-  // 只添加缺少的食材
-  const missingIngredients = recipe.ingredients.filter(ing => !ing.available)
+  // 获取用户选择的食材（从历史记录中获取）
+  const history = JSON.parse(localStorage.getItem('recipe-history') || '[]')
+  const userIngredients = history.length > 0 ? history[0].ingredients.map(ing => ing.name) : []
+
+  // 判断缺少的食材：如果 available 字段存在则使用它，否则根据用户选择的食材判断
+  const missingIngredients = recipe.ingredients.filter(ing => {
+    // 如果 available 字段存在，使用它
+    if (typeof ing.available === 'boolean') {
+      return !ing.available
+    }
+    // 否则，检查是否在用户选择的食材中
+    return !userIngredients.includes(ing.name)
+  })
+
+  if (missingIngredients.length === 0) {
+    ElMessage.info('所有食材都已具备，无需添加到购物清单')
+    return
+  }
 
   missingIngredients.forEach(ing => {
     const exists = shoppingList.find(item => item.name === ing.name)
@@ -302,28 +318,44 @@ ${currentRecipe.value.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
 // 辅助函数
 const getCuisineLabel = (cuisine) => {
   const map = {
+    // 前端格式
     chinese: '中餐',
     western: '西餐',
     japanese: '日韩料理',
-    southeast: '东南亚菜'
+    southeast: '东南亚菜',
+    // 后端枚举格式
+    CHINESE: '中餐',
+    WESTERN: '西餐',
+    JAPANESE_KOREAN: '日韩料理',
+    SOUTHEAST_ASIAN: '东南亚菜'
   }
   return map[cuisine] || cuisine
 }
 
 const getDifficultyLabel = (difficulty) => {
   const map = {
+    // 前端格式
     easy: '新手',
     medium: '家常',
-    hard: '大厨'
+    hard: '大厨',
+    // 后端枚举格式
+    BEGINNER: '新手',
+    HOME_COOKING: '家常',
+    CHEF: '大厨'
   }
   return map[difficulty] || difficulty
 }
 
 const getDifficultyType = (difficulty) => {
   const map = {
+    // 前端格式
     easy: 'success',
     medium: 'warning',
-    hard: 'danger'
+    hard: 'danger',
+    // 后端枚举格式
+    BEGINNER: 'success',
+    HOME_COOKING: 'warning',
+    CHEF: 'danger'
   }
   return map[difficulty] || 'info'
 }

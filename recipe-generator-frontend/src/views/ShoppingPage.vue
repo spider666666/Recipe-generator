@@ -156,7 +156,15 @@ const newItem = ref({
 
 onMounted(() => {
   loadList()
+  // 监听导航事件，当切换到购物清单页面时重新加载
+  window.addEventListener('navigate', handleNavigate)
 })
+
+const handleNavigate = (event) => {
+  if (event.detail === 'shopping') {
+    loadList()
+  }
+}
 
 const loadList = () => {
   shoppingList.value = JSON.parse(localStorage.getItem('shopping-list') || '[]')
