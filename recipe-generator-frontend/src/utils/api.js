@@ -128,4 +128,21 @@ export const clearShoppingListAPI = async () => {
   return await api.delete('/shopping-list')
 }
 
+// 食材组合相关 API
+export const saveCombosAPI = async (data) => {
+  return await api.post('/combos', data)
+}
+
+export const getCombosAPI = async () => {
+  return await api.get('/combos')
+}
+
+export const deleteComboAPI = async (comboId) => {
+  return await api.delete(`/combos/${comboId}`)
+}
+
+export const updateComboAPI = async (comboId, data) => {
+  return await api.put(`/combos/${comboId}`, data)
+}
+
 export default api

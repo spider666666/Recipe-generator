@@ -183,7 +183,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Collection, MagicStick } from '@element-plus/icons-vue'
 import IngredientGrid from '../components/IngredientGrid.vue'
-import { generateRecipesAPI, addHistoryAPI } from '../utils/api'
+import { generateRecipesAPI, addHistoryAPI, getCombosAPI, saveCombosAPI, deleteComboAPI } from '../utils/api'
 import { ingredientsData } from '../utils/ingredientsData'
 
 const activeCategory = ref('vegetables')
@@ -206,8 +206,20 @@ onMounted(() => {
   loadSavedCombos()
 })
 
-const loadSavedCombos = () => {
-  savedCombos.value = JSON.parse(localStorage.getItem('ingredient-combos') || '[]')
+const loadSavedCombos = async () => {
+  try {
+    const response = await getCombosAPI()
+    if (response.data) {
+      savedCombos.value = response.data.map(combo => ({
+        id: combo.id,
+        name: combo.name,
+        ingredients: JSON.parse(combo.ingredients),
+        createdAt: combo.createTime
+      }))
+    }
+  } catch (error) {
+    console.error('加载组合失败:', error)
+  }
 }
 
 // 食材数据按分类
@@ -278,15 +290,16 @@ const saveCombo = async () => {
   }).catch(() => {})
 
   if (name) {
-    const combos = JSON.parse(localStorage.getItem('ingredient-combos') || '[]')
-    combos.push({
-      name,
-      ingredients: [...selectedIngredients.value],
-      createdAt: new Date().toISOString()
-    })
-    localStorage.setItem('ingredient-combos', JSON.stringify(combos))
-    loadSavedCombos()  // 重新加载组合列表
-    ElMessage.success('保存成功')
+    try {
+      await saveCombosAPI({
+        name,
+        ingredients: JSON.stringify(selectedIngredients.value)
+      })
+      await loadSavedCombos()  // 重新加载组合列表
+      ElMessage.success('保存成功')
+    } catch (error) {
+      ElMessage.error(error.message || '保存失败')
+    }
   }
 }
 
@@ -305,13 +318,13 @@ const deleteCombo = async (combo) => {
       type: 'warning'
     })
 
-    const combos = JSON.parse(localStorage.getItem('ingredient-combos') || '[]')
-    const filtered = combos.filter(c => c.createdAt !== combo.createdAt)
-    localStorage.setItem('ingredient-combos', JSON.stringify(filtered))
-    loadSavedCombos()  // 重新加载组合列表
+    await deleteComboAPI(combo.id)
+    await loadSavedCombos()  // 重新加载组合列表
     ElMessage.success('已删除')
-  } catch {
-    // 用户取消
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
   }
 }
 
