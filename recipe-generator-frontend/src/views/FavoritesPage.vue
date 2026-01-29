@@ -225,11 +225,23 @@ const loadData = async () => {
     const favResponse = await getFavoritesAPI()
     console.log('收藏数据响应:', favResponse)
     if (favResponse.data && Array.isArray(favResponse.data)) {
-      favorites.value = favResponse.data.map(fav => ({
-        id: fav.recipeId,
-        ...fav.recipe,
-        favoritedAt: fav.createTime
-      }))
+      favorites.value = favResponse.data.map(fav => {
+        const recipe = fav.recipe
+        return {
+          id: fav.recipeId,
+          name: recipe.name,
+          cuisine: recipe.cuisineType,
+          time: recipe.cookingTime,
+          difficulty: recipe.difficultyLevel,
+          ingredients: recipe.recipeIngredients?.map(ing => ({
+            name: ing.ingredientName,
+            amount: ing.amount,
+            available: ing.available || false
+          })) || [],
+          steps: recipe.steps?.map(step => step.description) || [],
+          favoritedAt: fav.createTime
+        }
+      })
       console.log('加载了', favorites.value.length, '条收藏记录')
     }
 
@@ -237,13 +249,29 @@ const loadData = async () => {
     const historyResponse = await getHistoryAPI()
     console.log('历史记录响应:', historyResponse)
     if (historyResponse.data && Array.isArray(historyResponse.data)) {
-      history.value = historyResponse.data.map(h => ({
-        id: h.id,
-        recipes: [h.recipe],
-        createdAt: h.createTime,
-        ingredients: [],
-        filters: {}
-      }))
+      history.value = historyResponse.data.map(h => {
+        const recipe = h.recipe
+        const transformedRecipe = {
+          id: recipe.id,
+          name: recipe.name,
+          cuisine: recipe.cuisineType,
+          time: recipe.cookingTime,
+          difficulty: recipe.difficultyLevel,
+          ingredients: recipe.recipeIngredients?.map(ing => ({
+            name: ing.ingredientName,
+            amount: ing.amount,
+            available: ing.available || false
+          })) || [],
+          steps: recipe.steps?.map(step => step.description) || []
+        }
+        return {
+          id: h.id,
+          recipes: [transformedRecipe],
+          createdAt: h.createTime,
+          ingredients: [],
+          filters: {}
+        }
+      })
       console.log('加载了', history.value.length, '条历史记录')
     }
   } catch (error) {
