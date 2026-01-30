@@ -32,12 +32,37 @@ public class IngredientController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "根据名称搜索食材")
+    @Operation(summary = "根据名称搜索食材（支持智能匹配）")
     public ApiResponse<Ingredient> searchByName(@RequestParam String name) {
-        LambdaQueryWrapper<Ingredient> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Ingredient::getName, name);
-        Ingredient ingredient = ingredientMapper.selectOne(wrapper);
-        return ApiResponse.success("查询成功", ingredient);
+        // 1. 首先尝试精确匹配
+        LambdaQueryWrapper<Ingredient> exactWrapper = new LambdaQueryWrapper<>();
+        exactWrapper.eq(Ingredient::getName, name);
+        Ingredient ingredient = ingredientMapper.selectOne(exactWrapper);
+
+        if (ingredient != null) {
+            return ApiResponse.success("查询成功", ingredient);
+        }
+
+        // 2. 精确匹配失败，尝试智能匹配
+        // 策略：搜索包含关键词的食材，或者被关键词包含的食材
+        LambdaQueryWrapper<Ingredient> fuzzyWrapper = new LambdaQueryWrapper<>();
+        fuzzyWrapper.like(Ingredient::getName, name)
+                   .or()
+                   .apply("'{0}' LIKE CONCAT('%', name, '%')", name);
+
+        List<Ingredient> candidates = ingredientMapper.selectList(fuzzyWrapper);
+
+        if (candidates.isEmpty()) {
+            return ApiResponse.success("查询成功", null);
+        }
+
+        // 3. 如果找到多个候选，返回名称最短的（最可能是基础食材）
+        // 例如："大蒜"会匹配到"蒜"，"白糖"会匹配到"糖"
+        ingredient = candidates.stream()
+                .min((a, b) -> Integer.compare(a.getName().length(), b.getName().length()))
+                .orElse(candidates.get(0));
+
+        return ApiResponse.success("查询成功（智能匹配）", ingredient);
     }
 
     @GetMapping("/{id}")

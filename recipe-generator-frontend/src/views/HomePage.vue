@@ -414,9 +414,6 @@ const generateRecipes = async () => {
       console.error('保存历史记录失败:', err)
     }
 
-    // 保存到全局状态（用于菜谱页面展示）
-    localStorage.setItem('current-recipes', JSON.stringify(recipesArray))
-
     ElMessage.success(`成功生成${recipesArray.length}个食谱！`)
 
     // 跳转到菜谱页面

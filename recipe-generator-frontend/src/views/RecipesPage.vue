@@ -158,7 +158,14 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Star, StarFilled, ShoppingCart, Download } from '@element-plus/icons-vue'
-import { addFavoriteAPI, removeFavoriteAPI, getFavoritesAPI, addShoppingItemAPI, searchIngredientByNameAPI } from '../utils/api'
+import {
+  addFavoriteAPI,
+  removeFavoriteAPI,
+  getFavoritesAPI,
+  addShoppingItemAPI,
+  searchIngredientByNameAPI,
+  getHistoryAPI
+} from '../utils/api'
 
 const recipes = ref([])
 const detailVisible = ref(false)
@@ -172,10 +179,35 @@ onMounted(() => {
   window.addEventListener('navigate', handleNavigate)
 })
 
-const loadRecipes = () => {
-  const stored = localStorage.getItem('current-recipes')
-  if (stored) {
-    recipes.value = JSON.parse(stored)
+const loadRecipes = async () => {
+  try {
+    const response = await getHistoryAPI()
+    if (response.data && response.data.length > 0) {
+      // 转换历史记录为菜谱格式
+      recipes.value = response.data.map(history => ({
+        id: history.recipe.id,
+        name: history.recipe.name,
+        cuisine: history.recipe.cuisineType,
+        time: history.recipe.cookingTime,
+        difficulty: history.recipe.difficultyLevel,
+        description: history.recipe.description,
+        servings: history.recipe.servings,
+        // 映射食材字段名：quantity -> amount
+        ingredients: (history.recipe.ingredients || []).map(ing => ({
+          name: ing.name,
+          amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
+          available: true  // 默认为可用
+        })),
+        steps: history.recipe.steps || []
+      }))
+    }
+  } catch (error) {
+    console.error('加载菜谱失败:', error)
+    // 如果加载失败，尝试从 localStorage 获取（向后兼容）
+    const stored = localStorage.getItem('current-recipes')
+    if (stored) {
+      recipes.value = JSON.parse(stored)
+    }
   }
 }
 
@@ -224,38 +256,20 @@ const toggleFavorite = async (recipe) => {
 // 查看详情
 const viewDetail = (recipe) => {
   currentRecipe.value = { ...recipe }
-  // 加载评价
-  const ratings = JSON.parse(localStorage.getItem('recipe-ratings') || '{}')
-  if (ratings[recipe.id]) {
-    currentRecipe.value.rating = ratings[recipe.id].rating || 0
-    currentRecipe.value.comment = ratings[recipe.id].comment || ''
-  } else {
-    currentRecipe.value.rating = 0
-    currentRecipe.value.comment = ''
-  }
+  // 评分和评论功能暂时禁用，等待后端API支持
+  currentRecipe.value.rating = 0
+  currentRecipe.value.comment = ''
   detailVisible.value = true
 }
 
-// 保存评分
-const saveRating = (value) => {
-  const ratings = JSON.parse(localStorage.getItem('recipe-ratings') || '{}')
-  if (!ratings[currentRecipe.value.id]) {
-    ratings[currentRecipe.value.id] = {}
-  }
-  ratings[currentRecipe.value.id].rating = value
-  localStorage.setItem('recipe-ratings', JSON.stringify(ratings))
-  ElMessage.success('评分已保存')
+// 保存评分（暂时禁用）
+const saveRating = () => {
+  ElMessage.info('评分功能开发中，敬请期待')
 }
 
-// 保存评论
+// 保存评论（暂时禁用）
 const saveComment = () => {
-  const ratings = JSON.parse(localStorage.getItem('recipe-ratings') || '{}')
-  if (!ratings[currentRecipe.value.id]) {
-    ratings[currentRecipe.value.id] = {}
-  }
-  ratings[currentRecipe.value.id].comment = currentRecipe.value.comment
-  localStorage.setItem('recipe-ratings', JSON.stringify(ratings))
-  ElMessage.success('评论已保存')
+  ElMessage.info('评论功能开发中，敬请期待')
 }
 
 // 加入购物清单
@@ -313,7 +327,7 @@ const exportRecipe = () => {
 ${currentRecipe.value.ingredients.map(ing => `${ing.name} ${ing.amount}`).join('\n')}
 
 烹饪步骤：
-${currentRecipe.value.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+${currentRecipe.value.steps.map((step, i) => `${i + 1}. ${step.description || step}`).join('\n')}
   `.trim()
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })

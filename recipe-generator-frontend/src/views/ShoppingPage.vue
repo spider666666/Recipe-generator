@@ -181,7 +181,7 @@ const loadList = async () => {
         id: item.id,
         name: item.ingredient?.name || '未知食材',
         amount: item.quantity,
-        category: item.ingredient?.category || '其他',
+        category: getCategoryDisplayName(item.ingredient?.category) || '其他',
         note: item.note || '',
         checked: item.isPurchased || false,
         ingredientId: item.ingredientId
@@ -191,6 +191,19 @@ const loadList = async () => {
     console.error('加载购物清单失败:', error)
     ElMessage.error('加载购物清单失败')
   }
+}
+
+// 将后端枚举值转换为中文显示名称
+const getCategoryDisplayName = (category) => {
+  const categoryMap = {
+    'VEGETABLE': '蔬菜类',
+    'MEAT': '肉类',
+    'SEAFOOD': '海鲜类',
+    'STAPLE': '主食类',
+    'SEASONING': '调味料',
+    'OTHER': '其他'
+  }
+  return categoryMap[category] || '其他'
 }
 
 const saveList = async () => {

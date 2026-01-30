@@ -233,10 +233,10 @@ const loadData = async () => {
           cuisine: recipe.cuisineType,
           time: recipe.cookingTime,
           difficulty: recipe.difficultyLevel,
-          ingredients: recipe.recipeIngredients?.map(ing => ({
-            name: ing.ingredientName,
-            amount: ing.amount,
-            available: ing.available || false
+          ingredients: recipe.ingredients?.map(ing => ({
+            name: ing.name,
+            amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
+            available: true
           })) || [],
           steps: recipe.steps?.map(step => step.description) || [],
           favoritedAt: fav.createTime
@@ -257,10 +257,10 @@ const loadData = async () => {
           cuisine: recipe.cuisineType,
           time: recipe.cookingTime,
           difficulty: recipe.difficultyLevel,
-          ingredients: recipe.recipeIngredients?.map(ing => ({
-            name: ing.ingredientName,
-            amount: ing.amount,
-            available: ing.available || false
+          ingredients: recipe.ingredients?.map(ing => ({
+            name: ing.name,
+            amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
+            available: true
           })) || [],
           steps: recipe.steps?.map(step => step.description) || []
         }
@@ -351,10 +351,16 @@ const formatDate = (dateStr) => {
 
 const getCuisineLabel = (cuisine) => {
   const map = {
+    // 前端格式
     chinese: '中餐',
     western: '西餐',
     japanese: '日韩料理',
-    southeast: '东南亚菜'
+    southeast: '东南亚菜',
+    // 后端枚举格式
+    CHINESE: '中餐',
+    WESTERN: '西餐',
+    JAPANESE_KOREAN: '日韩料理',
+    SOUTHEAST_ASIAN: '东南亚菜'
   }
   return map[cuisine] || cuisine
 }
@@ -372,18 +378,28 @@ const getTasteLabel = (taste) => {
 
 const getDifficultyLabel = (difficulty) => {
   const map = {
+    // 前端格式
     easy: '新手',
     medium: '家常',
-    hard: '大厨'
+    hard: '大厨',
+    // 后端枚举格式
+    BEGINNER: '新手',
+    HOME_COOKING: '家常',
+    CHEF: '大厨'
   }
   return map[difficulty] || difficulty
 }
 
 const getDifficultyType = (difficulty) => {
   const map = {
+    // 前端格式
     easy: 'success',
     medium: 'warning',
-    hard: 'danger'
+    hard: 'danger',
+    // 后端枚举格式
+    BEGINNER: 'success',
+    HOME_COOKING: 'warning',
+    CHEF: 'danger'
   }
   return map[difficulty] || 'info'
 }
@@ -541,4 +557,3 @@ const getDifficultyType = (difficulty) => {
   color: #303133;
 }
 </style>
-n'hu

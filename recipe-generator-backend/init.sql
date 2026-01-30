@@ -64,12 +64,18 @@ INSERT INTO ingredient (name, category, common_unit, calories) VALUES
 ('酱油', 'SEASONING', 'ml', 63),
 ('醋', 'SEASONING', 'ml', 18),
 ('糖', 'SEASONING', 'g', 387),
+('白糖', 'SEASONING', 'g', 387),
 ('料酒', 'SEASONING', 'ml', 0),
 ('葱', 'SEASONING', '根', 30),
 ('姜', 'SEASONING', 'g', 41),
 ('蒜', 'SEASONING', '瓣', 128),
+('大蒜', 'SEASONING', '瓣', 128),
 ('食用油', 'SEASONING', 'ml', 884),
-('淀粉', 'SEASONING', 'g', 346);
+('淀粉', 'SEASONING', 'g', 346),
+('干辣椒', 'SEASONING', '个', 40),
+('花椒', 'SEASONING', 'g', 258),
+('八角', 'SEASONING', '个', 20),
+('香叶', 'SEASONING', '片', 10);
 
 -- 3. 创建食谱表：存储生成的食谱基本信息
 DROP TABLE IF EXISTS recipe;

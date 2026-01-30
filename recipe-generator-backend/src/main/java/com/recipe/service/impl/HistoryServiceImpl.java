@@ -2,10 +2,12 @@ package com.recipe.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.recipe.entity.History;
+import com.recipe.entity.Ingredient;
 import com.recipe.entity.Recipe;
 import com.recipe.entity.RecipeIngredient;
 import com.recipe.entity.RecipeStep;
 import com.recipe.mapper.HistoryMapper;
+import com.recipe.mapper.IngredientMapper;
 import com.recipe.mapper.RecipeMapper;
 import com.recipe.mapper.RecipeIngredientMapper;
 import com.recipe.mapper.RecipeStepMapper;
@@ -15,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,6 +32,7 @@ public class HistoryServiceImpl implements IHistoryService {
     private final RecipeMapper recipeMapper;
     private final RecipeIngredientMapper recipeIngredientMapper;
     private final RecipeStepMapper recipeStepMapper;
+    private final IngredientMapper ingredientMapper;
 
     @Override
     @Transactional
@@ -58,8 +62,22 @@ public class HistoryServiceImpl implements IHistoryService {
                 // 加载食材列表
                 LambdaQueryWrapper<RecipeIngredient> ingredientWrapper = new LambdaQueryWrapper<>();
                 ingredientWrapper.eq(RecipeIngredient::getRecipeId, recipe.getId());
-                List<RecipeIngredient> ingredients = recipeIngredientMapper.selectList(ingredientWrapper);
-                recipe.setRecipeIngredients(ingredients);
+                List<RecipeIngredient> recipeIngredients = recipeIngredientMapper.selectList(ingredientWrapper);
+                recipe.setRecipeIngredients(recipeIngredients);
+
+                // 转换为前端期望的格式
+                List<Recipe.IngredientDTO> ingredients = new ArrayList<>();
+                for (RecipeIngredient ri : recipeIngredients) {
+                    Ingredient ingredient = ingredientMapper.selectById(ri.getIngredientId());
+                    if (ingredient != null) {
+                        Recipe.IngredientDTO dto = new Recipe.IngredientDTO();
+                        dto.setName(ingredient.getName());
+                        dto.setQuantity(ri.getQuantity());
+                        dto.setIsRequired(ri.getIsRequired());
+                        ingredients.add(dto);
+                    }
+                }
+                recipe.setIngredients(ingredients);
 
                 // 加载步骤列表
                 LambdaQueryWrapper<RecipeStep> stepWrapper = new LambdaQueryWrapper<>();
