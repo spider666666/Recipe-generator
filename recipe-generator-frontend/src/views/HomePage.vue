@@ -71,14 +71,23 @@
         </el-card>
 
         <!-- 常用组合 -->
-        <el-card v-if="savedCombos.length > 0" class="combos-card">
+        <el-card class="combos-card">
           <template #header>
             <div class="card-header">
               <span>💾 常用组合</span>
-              <span class="combo-count">{{ savedCombos.length }} 个</span>
+              <span v-if="savedCombos.length > 0" class="combo-count">{{ savedCombos.length }} 个</span>
             </div>
           </template>
-          <div class="combos-grid">
+
+          <!-- 空状态提示 -->
+          <div v-if="savedCombos.length === 0" class="combos-empty">
+            <img src="@/assets/images/困惑猫.png" alt="困惑猫" class="empty-combo-cat" />
+            <div class="empty-combo-text">还没有保存常用组合喵~</div>
+            <div class="empty-combo-hint">选择食材后点击右侧"保存"按钮即可保存组合</div>
+          </div>
+
+          <!-- 组合列表 -->
+          <div v-else class="combos-grid">
             <div
               v-for="combo in savedCombos"
               :key="combo.createdAt"
@@ -760,6 +769,33 @@ const generateRecipes = async () => {
 .add-ingredient-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(255, 140, 158, 0.3);
+}
+
+/* 常用组合 - 空状态 */
+.combos-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-combo-cat {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: 20px;
+  animation: wiggle 2s ease-in-out infinite;
+}
+
+.empty-combo-text {
+  font-size: 16px;
+  color: #606266;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.empty-combo-hint {
+  font-size: 14px;
+  color: #909399;
+  line-height: 1.6;
 }
 
 /* 常用组合 - 卡片网格布局 */
