@@ -267,19 +267,24 @@ const addItem = async () => {
 // 移除项目
 const removeItem = async (id) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个项目吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      '确定要从购物清单中删除这个项目吗？删除后无法恢复喵~',
+      '🗑️ 删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        customClass: 'cat-message-box'
+      }
+    )
 
     await deleteShoppingItemAPI(id)
     await loadList()
-    ElMessage.success('已删除')
+    ElMessage.success('已删除喵~')
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error('删除失败，请重试喵~')
     }
   }
 }
@@ -287,24 +292,29 @@ const removeItem = async (id) => {
 // 清空清单
 const clearList = async () => {
   if (shoppingList.value.length === 0) {
-    ElMessage.warning('清单已经是空的')
+    ElMessage.warning('清单已经是空的喵~')
     return
   }
 
   try {
-    await ElMessageBox.confirm('确定要清空整个购物清单吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      `确定要清空整个购物清单吗？这将删除所有 ${shoppingList.value.length} 个项目，此操作不可恢复喵~`,
+      '🧹 清空确认',
+      {
+        confirmButtonText: '确定清空',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        customClass: 'cat-message-box'
+      }
+    )
 
     await clearShoppingListAPI()
     await loadList()
-    ElMessage.success('已清空')
+    ElMessage.success('已清空喵~')
   } catch (error) {
     if (error !== 'cancel') {
       console.error('清空失败:', error)
-      ElMessage.error('清空失败')
+      ElMessage.error('清空失败，请重试喵~')
     }
   }
 }

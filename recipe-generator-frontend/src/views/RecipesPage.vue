@@ -12,7 +12,7 @@
         <div v-if="recipes.length === 0" class="empty-state">
           <img src="@/assets/images/困惑猫.png" alt="困惑猫" class="empty-cat-icon" />
           <div class="empty-text">还没有生成菜谱喵~</div>
-          <el-button type="primary" @click="goToHome" class="empty-btn">去选择���材</el-button>
+          <el-button type="primary" @click="goToHome" class="empty-btn">去选择食材</el-button>
         </div>
 
         <div v-else class="recipes-grid">
@@ -298,12 +298,13 @@ const saveComment = () => {
 const deleteRecipe = async (recipe) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除菜谱"${recipe.name}"吗？此操作不可恢复。`,
-      '删除确认',
+      `确定要删除菜谱"${recipe.name}"吗？删除后无法恢复，但可以重新生成喵~`,
+      '🗑️ 删除确认',
       {
         confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
+        cancelButtonText: '再想想',
+        type: 'warning',
+        customClass: 'cat-message-box'
       }
     )
 
@@ -318,11 +319,11 @@ const deleteRecipe = async (recipe) => {
       currentRecipe.value = null
     }
 
-    ElMessage.success('删除成功')
+    ElMessage.success('删除成功喵~')
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error(error.message || '删除失败')
+      ElMessage.error(error.message || '删除失败，请重试喵~')
     }
   }
 }

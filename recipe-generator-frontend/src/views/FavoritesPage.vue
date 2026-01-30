@@ -175,18 +175,23 @@ const loadData = async () => {
 
 const removeFavorite = async (id) => {
   try {
-    await ElMessageBox.confirm('确定要取消收藏吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      '确定要取消收藏这个菜谱吗？取消后可以重新收藏喵~',
+      '💔 取消收藏',
+      {
+        confirmButtonText: '确定取消',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        customClass: 'cat-message-box'
+      }
+    )
 
     await removeFavoriteAPI(id)
     favorites.value = favorites.value.filter(fav => fav.id !== id)
-    ElMessage.success('已取消收藏')
+    ElMessage.success('已取消收藏喵~')
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.message || '操作失败')
+      ElMessage.error(error.message || '操作失败，请重试喵~')
     }
   }
 }

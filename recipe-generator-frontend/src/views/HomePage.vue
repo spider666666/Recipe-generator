@@ -65,7 +65,7 @@
               <el-input v-model="customAmount" placeholder="数量（如：200g）" />
             </el-col>
             <el-col :span="4">
-              <el-button type="primary" @click="addCustomIngredient" style="width: 100%">添加</el-button>
+              <el-button type="primary" @click="addCustomIngredient" class="add-ingredient-btn">添加</el-button>
             </el-col>
           </el-row>
         </el-card>
@@ -315,14 +315,20 @@ const removeIngredient = (index) => {
 // 保存常用组合
 const saveCombo = async () => {
   if (selectedIngredients.value.length === 0) {
-    ElMessage.warning('请先选择食材')
+    ElMessage.warning('请先选择食材喵~')
     return
   }
 
-  const { value: name } = await ElMessageBox.prompt('请输入组合名称', '保存组合', {
-    confirmButtonText: '保存',
-    cancelButtonText: '取消',
-  }).catch(() => {})
+  const { value: name } = await ElMessageBox.prompt(
+    '给这个食材组合起个名字吧，方便下次快速使用喵~',
+    '💾 保存组合',
+    {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：家常菜组合',
+      customClass: 'cat-message-box'
+    }
+  ).catch(() => {})
 
   if (name) {
     try {
@@ -331,9 +337,9 @@ const saveCombo = async () => {
         ingredients: JSON.stringify(selectedIngredients.value)
       })
       await loadSavedCombos()  // 重新加载组合列表
-      ElMessage.success('保存成功')
+      ElMessage.success('保存成功喵~')
     } catch (error) {
-      ElMessage.error(error.message || '保存失败')
+      ElMessage.error(error.message || '保存失败，请重试喵~')
     }
   }
 }
@@ -347,18 +353,23 @@ const loadCombo = (combo) => {
 // 删除组合
 const deleteCombo = async (combo) => {
   try {
-    await ElMessageBox.confirm(`确定要删除组合"${combo.name}"吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      `确定要删除组合"${combo.name}"吗？删除后无法恢复喵~`,
+      '🗑️ 删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        customClass: 'cat-message-box'
+      }
+    )
 
     await deleteComboAPI(combo.id)
     await loadSavedCombos()  // 重新加载组合列表
-    ElMessage.success('已删除')
+    ElMessage.success('已删除喵~')
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+      ElMessage.error(error.message || '删除失败，请重试喵~')
     }
   }
 }
@@ -726,6 +737,29 @@ const generateRecipes = async () => {
 .card-cat-icon:hover {
   opacity: 1;
   transform: rotate(15deg) scale(1.1);
+}
+
+/* 自定义食材添加按钮 */
+.add-ingredient-btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff8c69 0%, #ff6b9d 100%);
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 140, 158, 0.3);
+}
+
+.add-ingredient-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 140, 158, 0.45);
+}
+
+.add-ingredient-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 140, 158, 0.3);
 }
 
 /* 常用组合 - 卡片网格布局 */
