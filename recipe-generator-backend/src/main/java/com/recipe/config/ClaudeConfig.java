@@ -13,4 +13,5 @@ public class ClaudeConfig {
     private String model;
     private Integer maxTokens;
     private Double temperature;
+    private Integer timeout;  // 超时时间（毫秒）
 }

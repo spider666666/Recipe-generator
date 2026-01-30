@@ -41,9 +41,23 @@ public class Recipe {
     @TableField(exist = false)
     private List<RecipeStep> steps;
 
+    // 用于前端展示的简化食材列表
+    @TableField(exist = false)
+    private List<IngredientDTO> ingredients;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    // 内部类：用于前端展示的食材DTO
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class IngredientDTO {
+        private String name;
+        private String quantity;
+        private Boolean isRequired;
+    }
 }

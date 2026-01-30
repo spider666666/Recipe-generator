@@ -61,12 +61,12 @@ jwt:
 
 # Claude API配置
 claude:
-  api-key: ${CLAUDE_API_KEY:cr_b20992fdba86fa7a405392fa5754631085eac3d9432ed526095e33519278aa53}
+  api-key: ${CLAUDE_API_KEY:cr_2ca8306ad68d58975ce34f76f4db84ead5d1f95b9c91be811ddc018c534a0be3}
   api-url: https://crs-external.myrightone.com/api/v1/messages
-  model: claude-2.1
+  model: claude-sonnet-4-5-20250929
   max-tokens: 4096
   temperature: 0.7
-  timeout: 30000
+  timeout: 60000
 
 # CORS配置
 cors:

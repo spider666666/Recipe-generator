@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
  * Claude AI食谱生成服务实现类
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorService {
 
@@ -39,8 +38,30 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
     private final RecipeIngredientMapper recipeIngredientMapper;
     private final RecipeStepMapper recipeStepMapper;
     private final IngredientMapper ingredientMapper;
-    private final OkHttpClient httpClient = new OkHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final OkHttpClient httpClient;
+
+    // 手动构造函数，初始化 OkHttpClient
+    public ClaudeRecipeGeneratorServiceImpl(
+            ClaudeConfig claudeConfig,
+            RecipeMapper recipeMapper,
+            RecipeIngredientMapper recipeIngredientMapper,
+            RecipeStepMapper recipeStepMapper,
+            IngredientMapper ingredientMapper) {
+        this.claudeConfig = claudeConfig;
+        this.recipeMapper = recipeMapper;
+        this.recipeIngredientMapper = recipeIngredientMapper;
+        this.recipeStepMapper = recipeStepMapper;
+        this.ingredientMapper = ingredientMapper;
+
+        // 使用配置文件中的超时时间初始化 OkHttpClient
+        this.httpClient = new OkHttpClient.Builder()
+                .connectTimeout(claudeConfig.getTimeout(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                .readTimeout(claudeConfig.getTimeout(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                .writeTimeout(claudeConfig.getTimeout(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                .build();
+        log.info("OkHttpClient 初始化完成，超时时间: {}ms", claudeConfig.getTimeout());
+    }
 
     @Override
     @Transactional
@@ -48,13 +69,15 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
         try {
             List<Recipe> recipes = new ArrayList<>();
 
-            // 生成3个不同的食谱（硬编码）
-            String[] recipeJsons = getHardcodedRecipes();
+            // 构建提示词
+            String prompt = buildPrompt(request);
 
-            for (String recipeJson : recipeJsons) {
-                Recipe recipe = parseClaudeResponse(recipeJson, request);
-                recipes.add(recipe);
-            }
+            // 调用Claude API生成食谱
+            String claudeResponse = callClaudeAPI(prompt);
+
+            // 解析响应并创建食谱
+            Recipe recipe = parseClaudeResponse(claudeResponse, request);
+            recipes.add(recipe);
 
             log.info("成功生成{}个食谱", recipes.size());
             return recipes;
@@ -62,22 +85,6 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
             log.error("调用Claude API失败", e);
             throw new RuntimeException("生成食谱失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 获取硬编码的食谱数据
-     */
-    private String[] getHardcodedRecipes() {
-        return new String[]{
-            // 食谱1: 西红柿炒鸡蛋
-            "{\"name\":\"西红柿炒鸡蛋\",\"description\":\"经典中式家常菜，口感嫩滑、口味清淡，食材简单易获取，10分钟即可完成，适合烹饪新手\",\"servings\":2,\"ingredients\":[{\"name\":\"西红柿\",\"quantity\":\"2个\",\"isRequired\":true},{\"name\":\"鸡蛋\",\"quantity\":\"3个\",\"isRequired\":true},{\"name\":\"盐\",\"quantity\":\"少许\",\"isRequired\":false},{\"name\":\"食用油\",\"quantity\":\"2勺\",\"isRequired\":false}],\"steps\":[{\"stepNumber\":1,\"description\":\"西红柿洗净，顶部划十字刀，用开水烫10秒剥去外皮，切成小块备用\",\"duration\":3},{\"stepNumber\":2,\"description\":\"鸡蛋打入碗中，加少许盐搅打至出现细腻泡沫，静置2分钟\",\"duration\":2},{\"stepNumber\":3,\"description\":\"锅中倒入食用油，油温烧至六成热（微微冒烟），倒入蛋液快速翻炒至定型，盛出备用\",\"duration\":2},{\"stepNumber\":4,\"description\":\"同一口锅留少许底油，放入西红柿块翻炒，压出西红柿汤汁，炒至软烂\",\"duration\":3},{\"stepNumber\":5,\"description\":\"倒入炒好的鸡蛋，与西红柿翻炒均匀，加少许盐调味，翻炒10秒即可出锅\",\"duration\":2}]}",
-
-            // 食谱2: 土豆炖牛肉
-            "{\"name\":\"土豆炖牛肉\",\"description\":\"营养丰富的家常炖菜，牛肉软烂入味，土豆绵软香甜，汤汁浓郁，适合全家享用\",\"servings\":3,\"ingredients\":[{\"name\":\"牛肉\",\"quantity\":\"500g\",\"isRequired\":true},{\"name\":\"土豆\",\"quantity\":\"2个\",\"isRequired\":true},{\"name\":\"胡萝卜\",\"quantity\":\"1根\",\"isRequired\":true},{\"name\":\"洋葱\",\"quantity\":\"半个\",\"isRequired\":false},{\"name\":\"姜\",\"quantity\":\"3片\",\"isRequired\":false},{\"name\":\"酱油\",\"quantity\":\"2勺\",\"isRequired\":false},{\"name\":\"料酒\",\"quantity\":\"1勺\",\"isRequired\":false}],\"steps\":[{\"stepNumber\":1,\"description\":\"牛肉切块，冷水下锅焯水去血沫，捞出洗净备用\",\"duration\":5},{\"stepNumber\":2,\"description\":\"土豆、胡萝卜去皮切块，洋葱切片，姜切片备用\",\"duration\":5},{\"stepNumber\":3,\"description\":\"锅中热油，放入姜片和洋葱爆香，加入牛肉块翻炒至表面微黄\",\"duration\":3},{\"stepNumber\":4,\"description\":\"加入酱油、料酒翻炒均匀，倒入足量热水，大火烧开后转小火炖40分钟\",\"duration\":40},{\"stepNumber\":5,\"description\":\"加入土豆和胡萝卜块，继续炖20分钟至土豆软烂，大火收汁即可\",\"duration\":20}]}",
-
-            // 食谱3: 青椒肉丝
-            "{\"name\":\"青椒肉丝\",\"description\":\"经典川菜，色泽鲜艳，口感脆嫩，咸鲜微辣，下饭佳品，制作简单快捷\",\"servings\":2,\"ingredients\":[{\"name\":\"猪肉\",\"quantity\":\"200g\",\"isRequired\":true},{\"name\":\"青椒\",\"quantity\":\"2个\",\"isRequired\":true},{\"name\":\"蒜\",\"quantity\":\"3瓣\",\"isRequired\":false},{\"name\":\"酱油\",\"quantity\":\"1勺\",\"isRequired\":false},{\"name\":\"料酒\",\"quantity\":\"1勺\",\"isRequired\":false},{\"name\":\"淀粉\",\"quantity\":\"1勺\",\"isRequired\":false}],\"steps\":[{\"stepNumber\":1,\"description\":\"猪肉切丝，加入酱油、料酒、淀粉抓匀腌制10分钟\",\"duration\":10},{\"stepNumber\":2,\"description\":\"青椒去籽切丝，蒜切片备用\",\"duration\":3},{\"stepNumber\":3,\"description\":\"锅中热油，放入腌好的肉丝快速滑炒至变色，盛出备用\",\"duration\":2},{\"stepNumber\":4,\"description\":\"锅中留底油，放入蒜片爆香，加入青椒丝大火翻炒至断生\",\"duration\":3},{\"stepNumber\":5,\"description\":\"倒入炒好的肉丝，加盐调味，快速翻炒均匀即可出锅\",\"duration\":2}]}"
-        };
     }
 
     /**
@@ -151,112 +158,56 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
         log.info("使用模型: {}", claudeConfig.getModel());
         log.debug("请求体: {}", jsonBody);
 
-        // 修改请求头配置 - 移除可能导致问题的头
-        //todo 这里可能存在问题
-//        Request request = new Request.Builder()
-//                .url(claudeConfig.getApiUrl())
-//                .addHeader("Authorization", "Bearer " + claudeConfig.getApiKey())  // 标准认证方式
-//                .addHeader("Content-Type", "application/json")  // 标准Content-Type（大写）
-//                .post(RequestBody.create(jsonBody, MediaType.parse("application/json")))
-//                .build();
-//
-//        log.info("请求头: Authorization=Bearer {}, Content-Type=application/json",
-//                claudeConfig.getApiKey().substring(0, Math.min(10, claudeConfig.getApiKey().length())) + "...");
-//
-//        try (Response response = httpClient.newCall(request).execute()) {
-//            String responseBody = response.body() != null ? response.body().string() : "";
-//
-//            log.info("Claude API响应状态: {}", response.code());
-//            log.info("响应消息: {}", response.message());
-//            log.debug("响应体: {}", responseBody);
-//
-//            if (!response.isSuccessful()) {
-//                log.error("Claude API调用失败 - 状态码: {}, 消息: {}, 响应体: {}",
-//                        response.code(), response.message(), responseBody);
-//                throw new IOException("Claude API调用失败: " + response.code() + " " + response.message() + " - " + responseBody);
-//            }
+        // 使用Anthropic官方API请求头格式
+        Request request = new Request.Builder()
+                .url(claudeConfig.getApiUrl())
+                .addHeader("x-api-key", claudeConfig.getApiKey())  // Anthropic官方认证方式
+                .addHeader("anthropic-version", "2023-06-01")  // API版本
+                .addHeader("content-type", "application/json")
+                .post(RequestBody.create(jsonBody, MediaType.parse("application/json")))
+                .build();
 
-//            JsonNode jsonNode = objectMapper.readTree(responseBody);
+        log.info("请求头: x-api-key={}, anthropic-version=2023-06-01",
+                claudeConfig.getApiKey().substring(0, Math.min(10, claudeConfig.getApiKey().length())) + "...");
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String responseBody = response.body() != null ? response.body().string() : "";
+
+            log.info("Claude API响应状态: {}", response.code());
+            log.info("响应消息: {}", response.message());
+            log.debug("响应体: {}", responseBody);
+
+            if (!response.isSuccessful()) {
+                log.error("Claude API调用失败 - 状态码: {}, 消息: {}, 响应体: {}",
+                        response.code(), response.message(), responseBody);
+                throw new IOException("Claude API调用失败: " + response.code() + " " + response.message() + " - " + responseBody);
+            }
+
+            JsonNode jsonNode = objectMapper.readTree(responseBody);
 
             // 提取Claude的回复内容
-//            JsonNode contentArray = jsonNode.get("content");
+            JsonNode contentArray = jsonNode.get("content");
 
-//            if (contentArray != null && contentArray.isArray() && contentArray.size() > 0) {
-//                JsonNode textNode = contentArray.get(0).get("text");
-//                if (textNode != null) {
-//                    String result = textNode.asText();
-//                    log.info("成功获取Claude响应，长度: {}", result.length());
-//                    return result;
-//                }
-//            }
-        String result = "{\n" +
-                "  \"name\": \"西红柿炒鸡蛋\",\n" +
-                "  \"description\": \"经典中式家常菜，口感嫩滑、口味清淡，食材简单易获取，10分钟即可完成，适合烹饪新手\",\n" +
-                "  \"servings\": 2,\n" +
-                "  \"ingredients\": [\n" +
-                "    {\n" +
-                "      \"name\": \"西红柿\",\n" +
-                "      \"quantity\": \"2个\",\n" +
-                "      \"isRequired\": true\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"name\": \"鸡蛋\",\n" +
-                "      \"quantity\": \"3个\",\n" +
-                "      \"isRequired\": true\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"name\": \"食用盐\",\n" +
-                "      \"quantity\": \"少许\",\n" +
-                "      \"isRequired\": false\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"name\": \"食用油\",\n" +
-                "      \"quantity\": \"2勺\",\n" +
-                "      \"isRequired\": false\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"steps\": [\n" +
-                "    {\n" +
-                "      \"stepNumber\": 1,\n" +
-                "      \"description\": \"西红柿洗净，顶部划十字刀，用开水烫10秒剥去外皮，切成小块备用\",\n" +
-                "      \"duration\": 3\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"stepNumber\": 2,\n" +
-                "      \"description\": \"鸡蛋打入碗中，加少许盐搅打至出现细腻泡沫，静置2分钟\",\n" +
-                "      \"duration\": 2\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"stepNumber\": 3,\n" +
-                "      \"description\": \"锅中倒入食用油，油温烧至六成热（微微冒烟），倒入蛋液快速翻炒至定型，盛出备用\",\n" +
-                "      \"duration\": 2\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"stepNumber\": 4,\n" +
-                "      \"description\": \"同一口锅留少许底油，放入西红柿块翻炒，压出西红柿汤汁，炒至软烂\",\n" +
-                "      \"duration\": 3\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"stepNumber\": 5,\n" +
-                "      \"description\": \"倒入炒好的鸡蛋，与西红柿翻炒均匀，加少许盐调味，翻炒10秒即可出锅\",\n" +
-                "      \"duration\": 2\n" +
-                "    }\n" +
-                "  ]\n" +
-                "}";
+            if (contentArray != null && contentArray.isArray() && contentArray.size() > 0) {
+                JsonNode textNode = contentArray.get(0).get("text");
+                if (textNode != null) {
+                    String result = textNode.asText();
+                    log.info("成功获取Claude响应，长度: {}", result.length());
+                    return result;
+                }
+            }
 
-//            // todo尝试其他可能的响应格式
-//            if (jsonNode.has("response")) {
-//                return jsonNode.get("response").asText();
-//            }
-//            if (jsonNode.has("text")) {
-//                return jsonNode.get("text").asText();
-//            }
-//
-//            log.error("Claude API返回格式错误: {}", responseBody);
-//            throw new IOException("Claude API返回格式错误: " + responseBody);
+            // 尝试其他可能的响应格式
+            if (jsonNode.has("response")) {
+                return jsonNode.get("response").asText();
+            }
+            if (jsonNode.has("text")) {
+                return jsonNode.get("text").asText();
+            }
 
-        return result;
-
+            log.error("Claude API返回格式错误: {}", responseBody);
+            throw new IOException("Claude API返回格式错误: " + responseBody);
+        }
     }
 
     /**
@@ -332,6 +283,35 @@ public class ClaudeRecipeGeneratorServiceImpl implements IClaudeRecipeGeneratorS
                     recipeStepMapper.insert(step);
                 }
             }
+
+            // 查询并设置关联数据
+            List<RecipeIngredient> recipeIngredients = recipeIngredientMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RecipeIngredient>()
+                    .eq(RecipeIngredient::getRecipeId, recipe.getId())
+            );
+            recipe.setRecipeIngredients(recipeIngredients);
+
+            List<RecipeStep> recipeSteps = recipeStepMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RecipeStep>()
+                    .eq(RecipeStep::getRecipeId, recipe.getId())
+                    .orderByAsc(RecipeStep::getStepNumber)
+            );
+            recipe.setSteps(recipeSteps);
+
+            // 转换为前端期望的格式
+            List<Recipe.IngredientDTO> ingredients = new ArrayList<>();
+            for (RecipeIngredient ri : recipeIngredients) {
+                // 查询食材信息以获取名称
+                com.recipe.entity.Ingredient ingredient = ingredientMapper.selectById(ri.getIngredientId());
+                if (ingredient != null) {
+                    Recipe.IngredientDTO dto = new Recipe.IngredientDTO();
+                    dto.setName(ingredient.getName());
+                    dto.setQuantity(ri.getQuantity());
+                    dto.setIsRequired(ri.getIsRequired());
+                    ingredients.add(dto);
+                }
+            }
+            recipe.setIngredients(ingredients);
 
             return recipe;
 
