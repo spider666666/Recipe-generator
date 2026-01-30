@@ -95,6 +95,7 @@ public class FavoriteServiceImpl implements IFavoriteService {
                     Ingredient ingredient = ingredientMapper.selectById(ri.getIngredientId());
                     if (ingredient != null) {
                         Recipe.IngredientDTO dto = new Recipe.IngredientDTO();
+                        dto.setIngredientId(ingredient.getId());  // 设置食材ID
                         dto.setName(ingredient.getName());
                         dto.setQuantity(ri.getQuantity());
                         dto.setIsRequired(ri.getIsRequired());

@@ -62,6 +62,11 @@ export const getRecipeDetail = async (id) => {
   return await api.get(`/recipes/${id}`)
 }
 
+// 删除食谱
+export const deleteRecipeAPI = async (id) => {
+  return await api.delete(`/recipes/${id}`)
+}
+
 // 食材相关 API
 export const searchIngredientByNameAPI = async (name) => {
   return await api.get('/ingredients/search', { params: { name } })

@@ -56,6 +56,7 @@ public class Recipe {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class IngredientDTO {
+        private Long ingredientId;  // 食材ID，用于直接添加到购物清单
         private String name;
         private String quantity;
         private Boolean isRequired;

@@ -234,6 +234,7 @@ const loadData = async () => {
           time: recipe.cookingTime,
           difficulty: recipe.difficultyLevel,
           ingredients: recipe.ingredients?.map(ing => ({
+            ingredientId: ing.ingredientId,  // 保留食材ID
             name: ing.name,
             amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
             available: true
@@ -258,6 +259,7 @@ const loadData = async () => {
           time: recipe.cookingTime,
           difficulty: recipe.difficultyLevel,
           ingredients: recipe.ingredients?.map(ing => ({
+            ingredientId: ing.ingredientId,  // 保留食材ID
             name: ing.name,
             amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
             available: true

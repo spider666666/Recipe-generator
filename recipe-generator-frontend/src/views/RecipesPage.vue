@@ -68,6 +68,10 @@
                   <el-icon><ShoppingCart /></el-icon>
                   加入购物清单
                 </el-button>
+                <el-button type="danger" @click="deleteRecipe(recipe)">
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
               </div>
             </div>
           </el-card>
@@ -156,21 +160,23 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Star, StarFilled, ShoppingCart, Download } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Star, StarFilled, ShoppingCart, Download, Delete } from '@element-plus/icons-vue'
 import {
   addFavoriteAPI,
   removeFavoriteAPI,
   getFavoritesAPI,
   addShoppingItemAPI,
   searchIngredientByNameAPI,
-  getHistoryAPI
+  getHistoryAPI,
+  deleteRecipeAPI
 } from '../utils/api'
 
 const recipes = ref([])
 const detailVisible = ref(false)
 const currentRecipe = ref(null)
 const favoriteIds = ref(new Set())
+const addingToCart = ref(new Set())  // 跟踪正在添加到购物车的菜谱ID
 
 onMounted(() => {
   loadRecipes()
@@ -194,6 +200,7 @@ const loadRecipes = async () => {
         servings: history.recipe.servings,
         // 映射食材字段名：quantity -> amount
         ingredients: (history.recipe.ingredients || []).map(ing => ({
+          ingredientId: ing.ingredientId,  // 保留食材ID
           name: ing.name,
           amount: ing.quantity,  // 后端字段是 quantity，前端期望 amount
           available: true  // 默认为可用
@@ -274,43 +281,116 @@ const saveComment = () => {
 
 // 加入购物清单
 const addToShopping = async (recipe) => {
+  // 防止重复点击
+  if (addingToCart.value.has(recipe.id)) {
+    ElMessage.warning('正在添加中，请稍候...')
+    return
+  }
+
+  addingToCart.value.add(recipe.id)
+
   try {
     let addedCount = 0
     let failedIngredients = []
 
+    console.log(`开始添加菜谱 "${recipe.name}" 到购物清单，共 ${recipe.ingredients.length} 种食材`)
+
     for (const ing of recipe.ingredients) {
       try {
-        // 查找食材ID
-        const ingredientResponse = await searchIngredientByNameAPI(ing.name)
-        if (ingredientResponse.data) {
+        // 优先使用食材ID（如果有的话），避免重复搜索
+        let ingredientId = ing.ingredientId
+
+        console.log(`处理食材: ${ing.name}, ingredientId: ${ingredientId}, amount: ${ing.amount}`)
+
+        // 如果没有ingredientId，则通过名称搜索（向后兼容）
+        if (!ingredientId) {
+          console.log(`食材 ${ing.name} 没有ID，尝试搜索...`)
+          const ingredientResponse = await searchIngredientByNameAPI(ing.name)
+          console.log(`搜索结果:`, ingredientResponse)
+          if (ingredientResponse.data) {
+            ingredientId = ingredientResponse.data.id
+            console.log(`找到食材ID: ${ingredientId}`)
+          } else {
+            console.warn(`搜索食材 ${ing.name} 失败，未找到匹配项`)
+          }
+        }
+
+        if (ingredientId) {
+          console.log(`添加食材 ${ing.name} (ID: ${ingredientId}) 到购物清单`)
           await addShoppingItemAPI({
-            ingredientId: ingredientResponse.data.id,
+            ingredientId: ingredientId,
             quantity: ing.amount,
             note: ''
           })
           addedCount++
+          console.log(`成功添加食材 ${ing.name}`)
         } else {
+          console.error(`食材 ${ing.name} 没有ID，无法添加`)
           failedIngredients.push(ing.name)
         }
       } catch (err) {
         console.error(`添加食材 ${ing.name} 失败:`, err)
+        console.error('错误详情:', err.response || err.message || err)
         failedIngredients.push(ing.name)
       }
     }
 
+    console.log(`添加完成: 成功 ${addedCount} 个，失败 ${failedIngredients.length} 个`)
+
     if (addedCount > 0) {
-      ElMessage.success(`已添加 ${addedCount} 种食材到购物清单`)
+      if (failedIngredients.length > 0) {
+        ElMessage.warning(`已添加 ${addedCount} 种食材，${failedIngredients.length} 种失败：${failedIngredients.join('、')}`)
+      } else {
+        ElMessage.success(`已添加 ${addedCount} 种食材到购物清单`)
+      }
     }
 
-    if (failedIngredients.length > 0) {
-      ElMessage.warning(`以下食材未找到，无法添加：${failedIngredients.join('、')}`)
+    if (failedIngredients.length > 0 && addedCount === 0) {
+      ElMessage.error(`所有食材添加失败：${failedIngredients.join('、')}。请查看控制台了解详情。`)
     }
 
     if (addedCount === 0 && failedIngredients.length === 0) {
       ElMessage.info('没有可添加的食材')
     }
   } catch (error) {
+    console.error('添加到购物清单时发生错误:', error)
     ElMessage.error(error.message || '添加失败')
+  } finally {
+    // 完成后移除标记
+    addingToCart.value.delete(recipe.id)
+  }
+}
+
+// 删除菜谱
+const deleteRecipe = async (recipe) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除菜谱"${recipe.name}"吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await deleteRecipeAPI(recipe.id)
+
+    // 从列表中移除
+    recipes.value = recipes.value.filter(r => r.id !== recipe.id)
+
+    // 如果删除的是当前查看的菜谱，关闭详情弹窗
+    if (currentRecipe.value?.id === recipe.id) {
+      detailVisible.value = false
+      currentRecipe.value = null
+    }
+
+    ElMessage.success('删除成功')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
   }
 }
 

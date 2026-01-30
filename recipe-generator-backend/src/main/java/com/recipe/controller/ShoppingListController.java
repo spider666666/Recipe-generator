@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/shopping-list")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "购物清单管理", description = "购物清单相关接口")
 @SecurityRequirement(name = "Bearer Authentication")
 public class ShoppingListController {
@@ -33,14 +35,20 @@ public class ShoppingListController {
     @PostMapping
     @Operation(summary = "添加购物清单项")
     public ApiResponse<ShoppingList> addItem(@Valid @RequestBody AddShoppingItemRequest request) {
-        Long userId = getCurrentUserId();
-        ShoppingList item = shoppingListService.addItem(
-            userId,
-            request.getIngredientId(),
-            request.getQuantity(),
-            request.getNote()
-        );
-        return ApiResponse.success("添加成功", item);
+        try {
+            Long userId = getCurrentUserId();
+            ShoppingList item = shoppingListService.addItem(
+                userId,
+                request.getIngredientId(),
+                request.getQuantity(),
+                request.getNote()
+            );
+            return ApiResponse.success("添加成功", item);
+        } catch (Exception e) {
+            log.error("添加购物清单项失败: ingredientId={}, quantity={}, error={}",
+                request.getIngredientId(), request.getQuantity(), e.getMessage(), e);
+            return ApiResponse.error("添加失败: " + e.getMessage());
+        }
     }
 
     @GetMapping
