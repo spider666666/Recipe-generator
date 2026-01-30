@@ -197,7 +197,8 @@
             :loading="loading"
             :disabled="selectedIngredients.length === 0"
           >
-            <img v-if="!loading" src="@/assets/images/开心猫.png" alt="开心猫" class="btn-cat-icon" />
+            <img v-if="loading" src="@/assets/images/厨师小猫在搅拌锅.png" alt="加载中" class="btn-cat-icon loading-cat" />
+            <img v-else src="@/assets/images/开心猫.png" alt="开心猫" class="btn-cat-icon" />
             {{ loading ? '生成中...' : '生成食谱喵~' }}
           </el-button>
         </div>
@@ -994,6 +995,19 @@ const generateRecipes = async () => {
   height: 28px;
   object-fit: contain;
   animation: rotate 3s linear infinite;
+}
+
+.loading-cat {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes rotate {

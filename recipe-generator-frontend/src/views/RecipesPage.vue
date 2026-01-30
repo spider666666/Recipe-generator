@@ -39,7 +39,8 @@
               <div class="recipe-tags">
                 <el-tag v-if="recipe.cuisine" type="info">{{ getCuisineLabel(recipe.cuisine) }}</el-tag>
                 <el-tag type="success">{{ recipe.time }}分钟</el-tag>
-                <el-tag :type="getDifficultyType(recipe.difficulty)">
+                <el-tag :type="getDifficultyType(recipe.difficulty)" class="difficulty-tag">
+                  <img :src="getDifficultyIcon(recipe.difficulty)" :alt="getDifficultyLabel(recipe.difficulty)" class="difficulty-cat-icon" />
                   {{ getDifficultyLabel(recipe.difficulty) }}
                 </el-tag>
               </div>
@@ -99,7 +100,8 @@
             {{ getCuisineLabel(currentRecipe.cuisine) }}
           </el-tag>
           <el-tag type="success" size="large">{{ currentRecipe.time }}分钟</el-tag>
-          <el-tag :type="getDifficultyType(currentRecipe.difficulty)" size="large">
+          <el-tag :type="getDifficultyType(currentRecipe.difficulty)" size="large" class="difficulty-tag">
+            <img :src="getDifficultyIcon(currentRecipe.difficulty)" :alt="getDifficultyLabel(currentRecipe.difficulty)" class="difficulty-cat-icon-large" />
             {{ getDifficultyLabel(currentRecipe.difficulty) }}
           </el-tag>
         </div>
@@ -170,7 +172,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, StarFilled, Download, Delete } from '@element-plus/icons-vue'
 import {
@@ -180,6 +182,11 @@ import {
   getHistoryAPI,
   deleteRecipeAPI
 } from '../utils/api'
+
+// 导入难度图标
+import beginnerCatIcon from '@/assets/images/新手厨师猫.png'
+import homeCookingCatIcon from '@/assets/images/普通厨师猫.png'
+import chefCatIcon from '@/assets/images/专业厨师猫.png'
 
 const recipes = ref([])
 const detailVisible = ref(false)
@@ -391,6 +398,20 @@ const getDifficultyType = (difficulty) => {
   }
   return map[difficulty] || 'info'
 }
+
+const getDifficultyIcon = (difficulty) => {
+  const iconMap = {
+    // 前端格式
+    easy: beginnerCatIcon,
+    medium: homeCookingCatIcon,
+    hard: chefCatIcon,
+    // 后端枚举格式
+    BEGINNER: beginnerCatIcon,
+    HOME_COOKING: homeCookingCatIcon,
+    CHEF: chefCatIcon
+  }
+  return iconMap[difficulty] || homeCookingCatIcon
+}
 </script>
 
 <style scoped>
@@ -580,6 +601,24 @@ const getDifficultyType = (difficulty) => {
   border-radius: 12px;
   padding: 6px 14px;
   font-weight: 500;
+}
+
+.difficulty-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.difficulty-cat-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.difficulty-cat-icon-large {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 /* 食材预览 */
