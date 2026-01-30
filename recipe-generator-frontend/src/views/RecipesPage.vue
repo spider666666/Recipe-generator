@@ -117,8 +117,8 @@
             <el-step
               v-for="(step, index) in currentRecipe.steps"
               :key="index"
-              :title="`步骤 ${index + 1}`"
-              :description="step"
+              :title="`步骤 ${index + 1}${step.duration ? ` (${step.duration}分钟)` : ''}`"
+              :description="step.description || step"
             />
           </el-steps>
         </div>
